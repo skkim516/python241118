@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>테트리스 게임</title>
+    <style>
+        #game-board {
+            border: 2px solid #333;
+            margin: 0 auto;
+        }
+        .game-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .score {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="score">점수: <span id="score">0</span></div>
+        <canvas id="game-board" width="300" height="600"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('game-board');
+        const ctx = canvas.getContext('2d');
+        const BLOCK_SIZE = 30;
+        const BOARD_WIDTH = 10;
+        const BOARD_HEIGHT = 20;
+        let score = 0;
+        
+        // 테트리스 블록 모양 정의
+        const SHAPES = [
+            [[1, 1, 1, 1]], // I
+            [[1, 1], [1, 1]], // O
+            [[1, 1, 1], [0, 1, 0]], // T
+            [[1, 1, 1], [1, 0, 0]], // L
+            [[1, 1, 1], [0, 0, 1]], // J
+            [[1, 1, 0], [0, 1, 1]], // S
+            [[0, 1, 1], [1, 1, 0]]  // Z
+        ];
+
+        let board = Array(BOARD_HEIGHT).fill().map(() => Array(BOARD_WIDTH).fill(0));
+        let currentPiece = null;
+        let currentX = 0;
+        let currentY = 0;
+
+        // 새로운 조각 생성
+        function newPiece() {
+            const shape = SHAPES[Math.floor(Math.random() * SHAPES.length)];
+            currentPiece = shape;
+            currentX = Math.floor(BOARD_WIDTH / 2) - Math.floor(shape[0].length / 2);
+            currentY = 0;
+            
+            if (checkCollision()) {
+                // 게임 오버
+                alert('게임 오버! 점수: ' + score);
+                board = Array(BOARD_HEIGHT).fill().map(() => Array(BOARD_WIDTH).fill(0));
+                score = 0;
+                document.getElementById('score').textContent = score;
+            }
+        }
+
+        // 충돌 체크
+        function checkCollision() {
+            for (let y = 0; y < currentPiece.length; y++) {
+                for (let x = 0; x < currentPiece[y].length; x++) {
+                    if (currentPiece[y][x]) {
+                        const newX = currentX + x;
+                        const newY = currentY + y;
+                        
+                        if (newX < 0 || newX >= BOARD_WIDTH || newY >= BOARD_HEIGHT) return true;
+                        if (newY >= 0 && board[newY][newX]) return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        // 조각 고정
+        function mergePiece() {
+            for (let y = 0; y < currentPiece.length; y++) {
+                for (let x = 0; x < currentPiece[y].length; x++) {
+                    if (currentPiece[y][x]) {
+                        board[currentY + y][currentX + x] = 1;
+                    }
+                }
+            }
+            clearLines();
+            newPiece();
+        }
+
+        // 줄 제거
+        function clearLines() {
+            for (let y = BOARD_HEIGHT - 1; y >= 0; y--) {
+                if (board[y].every(cell => cell)) {
+                    board.splice(y, 1);
+                    board.unshift(Array(BOARD_WIDTH).fill(0));
+                    score += 100;
+                    document.getElementById('score').textContent = score;
+                }
+            }
+        }
+
+        // 게임 보드 그리기
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 보드 그리기
+            for (let y = 0; y < BOARD_HEIGHT; y++) {
+                for (let x = 0; x < BOARD_WIDTH; x++) {
+                    if (board[y][x]) {
+                        ctx.fillStyle = '#333';
+                        ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE - 1, BLOCK_SIZE - 1);
+                    }
+                }
+            }
+            
+            // 현재 조각 그리기
+            if (currentPiece) {
+                for (let y = 0; y < currentPiece.length; y++) {
+                    for (let x = 0; x < currentPiece[y].length; x++) {
+                        if (currentPiece[y][x]) {
+                            ctx.fillStyle = '#F00';
+                            ctx.fillRect((currentX + x) * BLOCK_SIZE, 
+                                       (currentY + y) * BLOCK_SIZE, 
+                                       BLOCK_SIZE - 1, 
+                                       BLOCK_SIZE - 1);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 키보드 이벤트 처리
+        document.addEventListener('keydown', event => {
+            if (!currentPiece) return;
+
+            switch (event.keyCode) {
+                case 37: // 왼쪽
+                    currentX--;
+                    if (checkCollision()) currentX++;
+                    break;
+                case 39: // 오른쪽
+                    currentX++;
+                    if (checkCollision()) currentX--;
+                    break;
+                case 40: // 아래
+                    currentY++;
+                    if (checkCollision()) {
+                        currentY--;
+                        mergePiece();
+                    }
+                    break;
+                case 38: // 위 (회전)
+                    const rotated = currentPiece[0].map((_, i) => 
+                        currentPiece.map(row => row[i]).reverse()
+                    );
+                    const previousPiece = currentPiece;
+                    currentPiece = rotated;
+                    if (checkCollision()) currentPiece = previousPiece;
+                    break;
+            }
+            draw();
+        });
+
+        // 게임 루프
+        function gameLoop() {
+            if (currentPiece) {
+                currentY++;
+                if (checkCollision()) {
+                    currentY--;
+                    mergePiece();
+                }
+            } else {
+                newPiece();
+            }
+            draw();
+        }
+
+        // 게임 시작
+        setInterval(gameLoop, 1000);
+        newPiece();
+    </script>
+</body>
+</html>
