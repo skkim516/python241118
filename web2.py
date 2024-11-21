@@ -12,8 +12,6 @@ for i in range(0,10):
     #페이징처리
     url = "https://www.clien.net/service/board/sold?&od=T31&category=0&po=" + str(i)
     print(url)
-
-
     #주소를 입력
     response = urllib.request.urlopen(url)
     #문자열을 받아서 디코딩
